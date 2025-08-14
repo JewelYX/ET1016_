@@ -34,23 +34,21 @@ int initial_buzzer;
 int buzz_time;
 // replace blocking code with millis
 unsigned long previousMillis = 0;
-const long interval = 2500;
 unsigned long previousMillisLDR = 0;
-const long intervalLDR = 1000;
+//Turning on each feature of the traffic light
 int beep = 0;
 int LDR = 0;
 int BLUE = 0;
-int ELDER_BLUE = 0;
+int GetLDR = 0;
 // LDR function
 int ldr_value;
-int time_record = 0;
+double time_record = 0.0;
 int sum = 0;
-int startTime = 0;
+int ldr_values[5];  // To store 5 LDR values
+int ldr_index = 0;
 // Check which button is pressed.Decides how much time to cross.
 int button_input;
 
-int ldr_values[5];  // To store 5 LDR values
-int ldr_index = 0;
 
 void setup() {
   pinMode(RED_LED, OUTPUT);
@@ -74,30 +72,31 @@ void loop() {
   unsigned long currentMillis = millis();
 
   // Constant beeping every 2.5 seconds
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= 2500) {
     if (beep) {
       previousMillis = currentMillis;
       buzz.playTone(1000, 100);
     }
   }
 
-  // LDR checking for nearby cars
-  if (currentMillis - previousMillisLDR >= intervalLDR) {
+  // LDR checking for nearby cars WHILE still beeping every 2.5 seconds
+  if (currentMillis - previousMillisLDR >= 1000) {
     if (LDR) {
       previousMillisLDR = currentMillis;
-
-      if (ldr_index < 5) {
+      if (GetLDR) {
         ldr_value = analogRead(LDR_PIN);
         ldr_values[ldr_index] = ldr_value;
-        ldr_index++;
-      } else {
-        sum += ldr_value;
+        sum+= ldr_value;
         time_record++;
-
-        Serial.println("Stored LDR values:");
-        for (int i = 0; i < 5; i++) {
-          Serial.println(ldr_values[i]);
+        ldr_index++;
+        if (ldr_index >= 5) {
+          GetLDR = 0;
         }
+      } else {
+          Serial.println("Stored LDR values:");
+          for (int i = 0; i < 5; i++) {
+            Serial.println(ldr_values[i]);
+          }
 
         double average = sum / time_record;
         Serial.print("Average LDR value: ");
@@ -110,37 +109,36 @@ void loop() {
         }
 
         ldr_index = 0;
+        time_record = 0;
+        sum = 0;
         LDR = 0;
+        beep = 0;
         Car_trafficlight();
       }
     }
   }
 
   // Reading button inputs
-  if (digitalRead(BUTTONK1) == 0) {
-    if (BLUE == 0) {
-      beep = 0;
-      LDR = 1;
-      button_input = 0;
-      BLUE = 1;
-    }
+  if (digitalRead(BUTTONK1) == 0 || digitalRead(BUTTONK2) == 0) {
+    beep = 1;
+    if (digitalRead(BUTTONK1) == 0) {
+        button_input = 0;
   } else if (digitalRead(BUTTONK2) == 0) {
-    if (ELDER_BLUE == 0) {
-      beep = 0;
-      LDR = 1;
       button_input = 15;
-      ELDER_BLUE = 1;
-    }
   } else {
     digitalWrite(BLUE_LED, LOW);
     beep = 1;
+    BLUE = 0;
   }
-
-  if (BLUE || ELDER_BLUE) {
-    BLUE_LIGHT(button_input);
-  }
+  LDR = 1;
+  GetLDR = 1;
+} else {
+  beep = 1;
 }
-
+if (BLUE == 1) {
+  BLUE_LIGHT(button_input);
+ }
+}
 // ------------------------------------------------------------------------------------------------
 // User-defined functions by Yee Yang
 void constant_buzz(int delayms) {
@@ -148,6 +146,7 @@ void constant_buzz(int delayms) {
     buzz.playTone(1000, 100);
     delay(2500);
   }
+  BLUE = 1;
 }
 
 void BLUE_LIGHT(int button_input) {
@@ -173,13 +172,13 @@ void BLUE_LIGHT(int button_input) {
   }
 
   digitalWrite(BLUE_LED, LOW);
-  BLUE = 0;
-  ELDER_BLUE = 0;
-  delay(500);
+  delay(1500);
   digitalWrite(RED_LED, LOW);
   digitalWrite(YELLOW_LED, LOW);
   digitalWrite(BLUE_LED, LOW);
   digitalWrite(GREEN_LED, HIGH);
+  BLUE = 0;
+  beep = 1;
 }
 
 
